@@ -1,0 +1,378 @@
+<?php
+include "koneksi.php";
+?>
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Sistem Pelanggaran Sekolah</title>
+
+<style>
+
+body{
+font-family:'Segoe UI',sans-serif;
+background:linear-gradient(to right,#1e3c72,#2a5298);
+margin:0;
+text-align:center;
+}
+
+.container{
+width:95%;
+max-width:1100px;
+margin:auto;
+margin-top:30px;
+background:white;
+padding:25px;
+border-radius:15px;
+box-shadow:0 10px 25px rgba(0,0,0,0.3);
+}
+
+input,select{
+padding:10px;
+margin:8px 0;
+width:100%;
+border-radius:5px;
+border:1px solid #ccc;
+box-sizing:border-box;
+}
+
+button{
+padding:10px 18px;
+margin:5px;
+border:none;
+border-radius:8px;
+cursor:pointer;
+font-weight:bold;
+}
+
+.login-btn{background:#27ae60;color:white;}
+.logout-btn{background:red;color:white;}
+.save-btn{background:#2980b9;color:white;}
+.delete-btn{background:#c0392b;color:white;}
+.filter-btn{background:#34495e;color:white;}
+.export-btn{background:#16a085;color:white;}
+
+.hidden{display:none;}
+
+.table-container{
+width:100%;
+overflow-x:auto;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:15px;
+}
+
+table,th,td{
+border:1px solid #ccc;
+}
+
+th{
+background:#2c3e50;
+color:white;
+}
+
+th,td{
+padding:10px;
+text-align:center;
+}
+
+/* RESPONSIVE UNTUK HP */
+@media (max-width:600px){
+
+.container{
+width:95%;
+padding:15px;
+}
+
+button{
+width:100%;
+margin-top:5px;
+}
+
+h2{
+font-size:22px;
+}
+
+table{
+font-size:14px;
+}
+
+}
+
+</style>
+
+</head>
+<body>
+
+<div class="container" id="loginPage">
+
+<h2>DATA PELANGGARAN SANTRI AL ITTIHAD</h2>
+
+<input type="text" id="username" placeholder="Username">
+<input type="password" id="password" placeholder="Password">
+
+<button class="login-btn" onclick="login()">Login</button>
+
+<button onclick="loginViewer()">Masuk Sebagai tamu</button>
+
+<h2>مَنْ كَانَتْ مُحَاسَبَتُهُ مُسَاوِيَةً
+فَكَيْفَ لَا تَكُونُ مُسَاوِئُهُ مُسَاوِيَةً<br>“Barang siapa perhitungannya sama saja setiap hari, maka keburukannya pun akan tetap sama.”<br>(AL-HIKAM)</h2>
+</div>
+
+<div class="container hidden" id="mainPage">
+
+<h2>Dashboard Pelanggaran Siswa</h2>
+
+<h3>Pilih Kelas</h3>
+
+<button class="filter-btn hidden" id="btnSemua" onclick="filterKelas('all')">Semua</button>
+<button class="filter-btn" onclick="filterKelas('1')">Kelas 1</button>
+<button class="filter-btn" onclick="filterKelas('2')">Kelas 2</button>
+<button class="filter-btn" onclick="filterKelas('3')">Kelas 3</button>
+<button class="filter-btn" onclick="filterKelas('4')">Kelas 4</button>
+<button class="filter-btn" onclick="filterKelas('5')">Kelas 5</button>
+<button class="filter-btn" onclick="filterKelas('6')">Kelas 6</button>
+
+<br><br>
+
+<input type="text" id="searchNama" placeholder="Cari nama siswa..." onkeyup="tampilkanData()">
+
+<h3 id="totalPelanggaran">Total Pelanggaran: 0</h3>
+
+<div id="formInput">
+
+<input type="text" id="nama" placeholder="Nama Siswa">
+
+<select id="kelas">
+<option value="">Pilih Kelas</option>
+<option value="1">Kelas 1</option>
+<option value="2">Kelas 2</option>
+<option value="3">Kelas 3</option>
+<option value="4">Kelas 4</option>
+<option value="5">Kelas 5</option>
+<option value="6">Kelas 6</option>
+</select>
+
+<input type="text" id="pelanggaran" placeholder="Jenis Pelanggaran">
+
+<input type="date" id="tanggal">
+
+<button class="save-btn" onclick="simpanData()">Simpan</button>
+
+
+<br><br>
+
+<button class="logout-btn" onclick="logout()">Logout</button>
+
+</div>
+
+<div class="table-container">
+
+<table>
+
+<thead>
+
+<tr>
+<th>Nama</th>
+<th>Kelas</th>
+<th>Pelanggaran</th>
+<th>Tanggal</th>
+<th class="hidden" id="aksiHeader">Aksi</th>
+</tr>
+
+
+<button class="logout-btn" onclick="logout()">Logout</button>
+
+</thead>
+
+<tbody id="tabelData"></tbody>
+
+</table>
+
+</div>
+
+</div>
+
+
+<script>
+
+let role="";
+let kelasAktif="all";
+
+function login(){
+
+let username=document.getElementById("username").value;
+let password=document.getElementById("password").value;
+
+let formData=new FormData();
+
+formData.append("username",username);
+formData.append("password",password);
+
+fetch("login.php",{
+method:"POST",
+body:formData
+})
+.then(res=>res.json())
+.then(data=>{
+
+if(data.status==="success"){
+
+role=data.role;
+
+document.getElementById("loginPage").classList.add("hidden");
+document.getElementById("mainPage").classList.remove("hidden");
+
+if(role==="viewer"){
+document.getElementById("formInput").style.display="none";
+}else{
+document.getElementById("aksiHeader").classList.remove("hidden");
+document.getElementById("btnSemua").classList.remove("hidden");
+}
+
+tampilkanData();
+
+}else{
+alert("Username atau password salah!");
+}
+
+});
+
+}
+function loginViewer(){
+
+role="viewer";
+
+document.getElementById("loginPage").classList.add("hidden");
+document.getElementById("mainPage").classList.remove("hidden");
+
+document.getElementById("formInput").style.display="none";
+
+tampilkanData();
+
+}
+
+
+
+function filterKelas(kelas){
+
+console.log("kelas dipilih:",kelas);
+
+
+kelasAktif=kelas;
+tampilkanData();
+
+}
+
+function simpanData(){
+
+let nama = document.getElementById("nama").value;
+let kelas = document.getElementById("kelas").value;
+let pelanggaran = document.getElementById("pelanggaran").value;
+let tanggal = document.getElementById("tanggal").value;
+
+// CEK apakah ada yang kosong
+if(nama=="" || kelas=="" || pelanggaran=="" || tanggal==""){
+alert("Semua data harus diisi terlebih dahulu!");
+return;
+}
+
+let formData=new FormData();
+
+formData.append("nama",nama);
+formData.append("kelas",kelas);
+formData.append("pelanggaran",pelanggaran);
+formData.append("tanggal",tanggal);
+
+fetch("simpan.php",{
+method:"POST",
+body:formData
+})
+.then(()=>{
+alert("Data berhasil disimpan");
+
+document.getElementById("nama").value="";
+document.getElementById("kelas").value="";
+document.getElementById("pelanggaran").value="";
+document.getElementById("tanggal").value="";
+
+tampilkanData();
+
+});
+
+}
+
+function tampilkanData(){
+
+let tabel=document.getElementById("tabelData");
+let search=document.getElementById("searchNama").value.toLowerCase();
+
+fetch("ambil_data.php")
+.then(res=>res.json())
+.then(data=>{
+
+tabel.innerHTML="";
+let total=0;
+
+data.forEach(d=>{
+
+if((kelasAktif==="all"||d.kelas==kelasAktif) &&
+d.nama.toLowerCase().includes(search)){
+
+total++;
+
+tabel.innerHTML+=`
+<tr>
+<td>${d.nama}</td>
+<td>${d.kelas}</td>
+<td>${d.pelanggaran}</td>
+<td>${d.tanggal}</td>
+
+${role==="admin"?`
+<td>
+<button class="delete-btn" onclick="hapusData(${d.id})">Hapus</button>
+</td>`:""}
+
+</tr>
+`;
+
+}
+
+});
+
+document.getElementById("totalPelanggaran").innerText="Total Pelanggaran: "+total;
+
+});
+
+}
+
+function hapusData(id){
+
+if(confirm("Yakin ingin menghapus data ini?")){
+
+fetch("hapus.php?id="+id)
+.then(()=>tampilkanData());
+
+}
+
+}
+
+
+
+function logout(){
+
+location.reload();
+
+}
+
+</script>
+
+</body>
+</html>
